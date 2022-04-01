@@ -1,0 +1,9 @@
+version: "2.2"
+services:
+  tests:
+    build:
+      args:
+        PIPENV_FLAGS: "--dev"
+      context: .
+    entrypoint: /var/lang/bin/python
+    command: -m pytest tests
