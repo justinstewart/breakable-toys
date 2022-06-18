@@ -11,7 +11,7 @@ from src.codedeploy import pass_deployment, fail_deployment
 logger = logging.getLogger()
 
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
-SIGNING_KEY = os.getenv("FORMSORT_SIGNING_KEY", "your-signing-key")
+SIGNING_KEY = os.getenv("SIGNING_KEY", "your-signing-key")
 FORBIDDEN = {"statusCode": 401, "body": "forbidden"}
 SUCCESSFUL = {"statusCode": 200, "body": "successful"}
 

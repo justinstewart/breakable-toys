@@ -79,11 +79,11 @@ Resources:
     Metadata:
       Dockerfile: ./Dockerfile
       DockerContext: .
-      DockerTag: !Sub "hello-world-${ReleaseId}"
+      DockerTag: !Sub "formsort-webhook-${ReleaseId}"
     Properties:
       PackageType: Image
       ImageConfig:
-        Command: ["src.handlers.hello_world_handler"]
+        Command: ["src.handlers.handler"]
       FunctionName: "formsort-webhook"
       Timeout: 900
       AutoPublishAlias: live
@@ -99,3 +99,9 @@ Resources:
           SQS_QUEUE_URL: !Ref AnswersQueue
           SIGNING_KEY: !Ref SigningKey
       Role: !GetAtt LambdaExecutionRole.Arn
+Outputs:
+  AnswersQueueUrl:
+    Description: The Queue URL for Answers
+    Value: !Ref AnswersQueue
+    Export:
+      Name: AnswersQueueUrl
