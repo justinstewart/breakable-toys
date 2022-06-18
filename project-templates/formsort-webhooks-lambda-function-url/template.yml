@@ -7,6 +7,8 @@ Parameters:
   ReleaseId:
     Type: String
     Default: dev
+  SigningKey:
+    Type: String
 Globals:
   Function:
     Tags:
@@ -82,7 +84,7 @@ Resources:
       PackageType: Image
       ImageConfig:
         Command: ["src.handlers.hello_world_handler"]
-      FunctionName: "hello-world"
+      FunctionName: "formsort-webhook"
       Timeout: 900
       AutoPublishAlias: live
       DeploymentPreference:
@@ -90,4 +92,10 @@ Resources:
         Hooks:
           PreTraffic: !Ref PreTrafficLambdaFunction
           PostTraffic: !Ref PostTrafficLambdaFunction
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref AnswersQueue
+          SIGNING_KEY: !Ref SigningKey
       Role: !GetAtt LambdaExecutionRole.Arn

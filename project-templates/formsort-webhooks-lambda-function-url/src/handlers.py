@@ -12,16 +12,17 @@ logger = logging.getLogger()
 
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 SIGNING_KEY = os.getenv("FORMSORT_SIGNING_KEY", "your-signing-key")
+FORBIDDEN = {"statusCode": 401, "body": "forbidden"}
+SUCCESSFUL = {"statusCode": 200, "body": "successful"}
 
 
 def hmac_sign(signing_key, original_request_body):
     key = signing_key.encode("utf8")
     message = original_request_body.encode("utf8")
     return (
-        base64.urlsafe_b64encode(
-            hmac.new(key, message, hashlib.sha256).digest())
-            .rstrip(b"=")
-            .decode("utf8")
+        base64.urlsafe_b64encode(hmac.new(key, message, hashlib.sha256).digest())
+        .rstrip(b"=")
+        .decode("utf8")
     )
 
 
@@ -47,27 +48,16 @@ def post_traffic_hook_handler(event, context):
     logger.info("Finished post-traffic hook.")
 
 
-unauthorized = {
-            "statusCode": 401,
-            "body": "forbidden"
-        }
-
-successful = {
-    "statusCode": 200,
-    "body": "successful"
-}
-
-
 def handler(event, context):
     # Verify Signature
     if not event["headers"].get("x-formsort-signature"):
-        return unauthorized
+        return FORBIDDEN
     signature = hmac_sign(SIGNING_KEY, event["body"])
     if signature != event["headers"]["x-formsort-signature"]:
-        return unauthorized
+        return FORBIDDEN
 
     # Send Message to Queue
     sqs = boto3.resource("sqs")
     answers_queue = sqs.Queue(SQS_QUEUE_URL)
     answers_queue.send_message(MessageBody=event["body"])
-    return successful
+    return SUCCESSFUL
