@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  ReleaseId:
+    Type: String
+    Default: dev
+Globals:
+  Function:
+    Tags:
+      service: "formsort-webhook-integration"
+      environment: !Ref Environment
+Resources:
+  AnswersQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "formsort-answers"
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}LambdaExecutionRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "codedeploy:PutLifecycleEventHookExecutionStatus"
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - "sqs:SendMessage"
+                Resource: !Sub '${AnswersQueue.Arn}'
+  PreTrafficLambdaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: ./Dockerfile
+      DockerContext: .
+      DockerTag: !Sub "pre-traffic-${ReleaseId}"
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["src.handlers.pre_traffic_hook_handler"]
+      FunctionName: !Sub "CodeDeployHook_${AWS::StackName}-pre-traffic-hook"
+      Timeout: 900
+      Role: !GetAtt LambdaExecutionRole.Arn
+  PostTrafficLambdaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: ./Dockerfile
+      DockerContext: .
+      DockerTag: !Sub "post-traffic-${ReleaseId}"
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["src.handlers.post_traffic_hook_handler"]
+      FunctionName: !Sub "CodeDeployHook_${AWS::StackName}-post-traffic-hook"
+      Timeout: 900
+      Role: !GetAtt LambdaExecutionRole.Arn
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: ./Dockerfile
+      DockerContext: .
+      DockerTag: !Sub "hello-world-${ReleaseId}"
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["src.handlers.hello_world_handler"]
+      FunctionName: "hello-world"
+      Timeout: 900
+      AutoPublishAlias: live
+      DeploymentPreference:
+        Type: AllAtOnce
+        Hooks:
+          PreTraffic: !Ref PreTrafficLambdaFunction
+          PostTraffic: !Ref PostTrafficLambdaFunction
+      Role: !GetAtt LambdaExecutionRole.Arn
