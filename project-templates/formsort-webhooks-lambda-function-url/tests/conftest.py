@@ -2,6 +2,7 @@ import os
 
 import boto3
 import pytest
+from moto import mock_sqs
 
 
 @pytest.fixture
@@ -14,9 +15,20 @@ def aws_credentials():
 
 
 @pytest.fixture
-def sqs_client(aws_credentials):
+def sqs(aws_credentials):
     with mock_sqs():
-        yield boto3.client("sqs")
+        yield boto3.resource("sqs")
+
+
+@pytest.fixture
+def the_answers_queue(sqs):
+    return sqs.create_queue(
+        QueueName=f"answers-queue",
+        Attributes=dict(
+            VisibilityTimeout="300",
+            SqsManagedSseEnabled="True",
+        ),
+    )
 
 
 @pytest.fixture
@@ -27,8 +39,3 @@ def a_lambda_url_event():
             "body": body or '{"hello": "world"}'
         }
     return _a_lambda_url_event
-
-
-@pytest.fixture
-def answers_queue():
-    pass

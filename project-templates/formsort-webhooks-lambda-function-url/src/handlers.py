@@ -47,20 +47,27 @@ def post_traffic_hook_handler(event, context):
     logger.info("Finished post-traffic hook.")
 
 
+unauthorized = {
+            "statusCode": 401,
+            "body": "forbidden"
+        }
+
+successful = {
+    "statusCode": 200,
+    "body": "successful"
+}
+
+
 def handler(event, context):
     # Verify Signature
+    if not event["headers"].get("x-formsort-signature"):
+        return unauthorized
     signature = hmac_sign(SIGNING_KEY, event["body"])
     if signature != event["headers"]["x-formsort-signature"]:
-        return {
-            "statusCode": 401,
-            "body": "Forbidden"
-        }
+        return unauthorized
 
     # Send Message to Queue
     sqs = boto3.resource("sqs")
     answers_queue = sqs.Queue(SQS_QUEUE_URL)
     answers_queue.send_message(MessageBody=event["body"])
-    return {
-        "statusCode": 200,
-        "body": "success"
-    }
+    return successful
